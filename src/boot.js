@@ -65,22 +65,27 @@
     setTimeout(poll, 150);
   }
 
-  // Proactively load Yandex SDK early to avoid container-held preloaders
+  // Proactively load Yandex SDK unless running in Samsung/YouTube environment
   try {
-    if (!window.YaGames || !window.YaGames.init) {
-      var s = document.createElement('script');
-      s.src = 'https://yandex.ru/games/sdk/v2';
-      s.async = true;
-      s.onload = function () {
-        try {
-          window.YaGames && window.YaGames.init && window.YaGames.init().then(function (y) {
-            try { y?.features?.LoadingAPI?.ready?.(); } catch (e) {}
-            markReady();
-          }).catch(function () { markReady(); });
-        } catch (e) { markReady(); }
-      };
-      s.onerror = function () { markReady(); };
-      document.head.appendChild(s);
+    var q = new URLSearchParams(location.search);
+    var isSamsung = (q.get('platform') === 'samsung') || !!window.samsungInstant;
+    var isYouTube = (q.get('platform') === 'youtube') || !!window.YTPlayable;
+    if (!isSamsung && !isYouTube) {
+      if (!window.YaGames || !window.YaGames.init) {
+        var s = document.createElement('script');
+        s.src = 'https://yandex.ru/games/sdk/v2';
+        s.async = true;
+        s.onload = function () {
+          try {
+            window.YaGames && window.YaGames.init && window.YaGames.init().then(function (y) {
+              try { y?.features?.LoadingAPI?.ready?.(); } catch (e) {}
+              markReady();
+            }).catch(function () { markReady(); });
+          } catch (e) { markReady(); }
+        };
+        s.onerror = function () { markReady(); };
+        document.head.appendChild(s);
+      }
     }
   } catch (e) {}
 
