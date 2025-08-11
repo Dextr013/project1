@@ -109,6 +109,10 @@ body{ -webkit-touch-callout: none; }
   #btn-sound,#btn-settings,#btn-auth,#btn-lb{grid-column:span 1}
   #mode-select,#size-select{grid-column:span 1}
 }
+@media (max-width:560px){
+  .controls{grid-template-columns:repeat(2,minmax(0,1fr));}
+  #btn-new{grid-column:span 2}
+}
 
 /* Coarse pointer (touch) general boost for hit targets */
 @media (pointer:coarse){
