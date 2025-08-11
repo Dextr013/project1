@@ -222,6 +222,7 @@ async function boot() {
   const btnNextTrack = document.getElementById('btn-next-track')
   const btnPrevTrack = document.getElementById('btn-prev-track')
   const btnAchievements = document.getElementById('btn-achievements')
+  const sfxToggle = document.getElementById('sfx-toggle')
   if (btnSettings) btnSettings.addEventListener('click', () => { settingsOverlay?.classList.remove('hidden') })
   if (btnSettingsClose) btnSettingsClose.addEventListener('click', () => { settingsOverlay?.classList.add('hidden') })
   if (volumeRange) {
@@ -241,6 +242,15 @@ async function boot() {
       const id = e.target.value
       await audio.play(id)
       ensureSoundToggleReflects(btnSound, audio)
+    })
+  }
+  if (sfxToggle) {
+    try {
+      const s = localStorage.getItem('sfx')
+      sfxToggle.checked = s !== '0'
+    } catch {}
+    sfxToggle.addEventListener('change', (e) => {
+      audio.setSfxEnabled(e.target.checked)
     })
   }
   if (btnNextTrack) btnNextTrack.addEventListener('click', async () => { await audio.nextTrack(); selectCurrentTrack(trackSelect, audio) })
@@ -332,6 +342,23 @@ async function boot() {
     const dpr = Math.min(2, window.devicePixelRatio || 1)
     const vw = Math.max(320, Math.min(window.innerWidth, 1920))
     const vh = Math.max(320, Math.min(window.innerHeight, 1920))
+    // Parallax background based on pointer/tilt with clamping and reduced motion
+    try {
+      const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (!reduce) {
+        const img = document.getElementById('bg-img')
+        if (img) {
+          const rect = container?.getBoundingClientRect?.() || { width: vw, height: vh, left: 0, top: 0 }
+          const cx = rect.left + rect.width / 2
+          const cy = rect.top + rect.height / 2
+          const dx = (window.innerWidth / 2 - cx) / window.innerWidth
+          const dy = (window.innerHeight / 2 - cy) / window.innerHeight
+          const maxShift = 12
+          img.style.transform = `translate(${dx * maxShift}px, ${dy * maxShift}px) scale(1.03)`
+        }
+      }
+    } catch {}
+
 
     // Prefer container bounds; container keeps square via CSS aspect-ratio
     let cw = vw, ch = vh
