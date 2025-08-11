@@ -94,3 +94,23 @@ html, body{ padding-top: constant(safe-area-inset-top, 0px); padding-bottom: con
 /* iOS tap/callout tweaks */
 *{ -webkit-tap-highlight-color: transparent; }
 body{ -webkit-touch-callout: none; }
+
+/* Mobile controls layout enhancements */
+@media (max-width:720px){
+  .hud{grid-template-columns:1fr;grid-auto-rows:auto;row-gap:10px}
+  .brand{justify-content:center;margin-bottom:4px}
+  .stats{justify-content:center;margin-bottom:4px}
+  .controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch;justify-items:stretch}
+  .controls .btn,.controls .select{width:100%;min-height:52px;padding:14px 18px;font-size:16px;border-radius:14px}
+  .mode-wrap{flex-direction:column;align-items:stretch;gap:4px}
+  .mode-wrap .select{width:100%}
+  #btn-new{grid-column:span 3}
+  #btn-undo,#btn-redo,#btn-hint{grid-column:span 1}
+  #btn-sound,#btn-settings,#btn-auth,#btn-lb{grid-column:span 1}
+  #mode-select,#size-select{grid-column:span 1}
+}
+
+/* Coarse pointer (touch) general boost for hit targets */
+@media (pointer:coarse){
+  .btn,.select{min-height:50px;padding:14px 16px}
+}
