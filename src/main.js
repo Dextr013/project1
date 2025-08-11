@@ -364,8 +364,8 @@ async function boot() {
     if (bgLayer) {
       const q = new URLSearchParams(location.search)
       const customBg = q.get('bg')
-      const defaultBg = 'https://avatars.mds.yandex.net/get-games/1892995/2a00000198578acfc08bd4a514259834ed86//orig'
-      const fallbackList = ['background17.webp','background18.webp','background19.webp','bg6.png']
+      const defaultBg = 'background18.webp'
+      const fallbackList = ['background17.webp','background18.webp','background19.webp','bg6.webp','bg13.webp']
       const chosen = customBg ? decodeURIComponent(customBg) : defaultBg
       const img = document.getElementById('bg-img')
       if (img) {
