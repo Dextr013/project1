@@ -79,6 +79,15 @@ async function boot() {
   const langSelect = document.getElementById('lang-select')
   if (langSelect) populateLanguageSelect(langSelect)
   setUiTexts()
+  // Restore saved language (overrides auto-detect)
+  try {
+    const savedLang = localStorage.getItem('lang')
+    if (savedLang === 'en' || savedLang === 'ru') {
+      setLanguage(savedLang)
+      if (langSelect) populateLanguageSelect(langSelect)
+      setUiTexts()
+    }
+  } catch {}
 
   // If Yandex SDK is already present (pre-injected by container), signal ready ASAP
   try {

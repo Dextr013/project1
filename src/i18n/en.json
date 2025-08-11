@@ -26,7 +26,7 @@
   "size": "Size",
   "undo": "Undo",
   "redo": "Redo",
-  "hint": "Hint"
+  "hint": "Hint",
   "achievementUnlocked": "Achievement unlocked: {name}",
   "ach_128": "Reach tile 128",
   "ach_256": "Reach tile 256",
@@ -39,11 +39,10 @@
   "mode": "Mode",
   "modeClassic": "Classic",
   "modeTimed": "Timed",
-
   "timeLeft": "Time",
   "timeUp": "Time is up!",
   "combo": "Combo",
   "fast512": "512 in 30s!",
   "endurance5": "Endurance 5 minutes!",
-
+  "tileSounds": "Tile sounds"
 }
