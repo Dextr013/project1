@@ -233,6 +233,8 @@ async function boot() {
   const btnAchievements = document.getElementById('btn-achievements')
   const sfxToggle = document.getElementById('sfx-toggle')
   const bgSelect = document.getElementById('bg-select')
+  const sensRange = document.getElementById('touch-sens')
+  const onscreenToggle = document.getElementById('onscreen-toggle')
   if (btnSettings) btnSettings.addEventListener('click', () => { settingsOverlay?.classList.remove('hidden') })
   if (btnSettingsClose) btnSettingsClose.addEventListener('click', () => { settingsOverlay?.classList.add('hidden') })
   if (volumeRange) {
@@ -292,6 +294,36 @@ async function boot() {
   if (btnNextTrack) btnNextTrack.addEventListener('click', async () => { await audio.nextTrack(); selectCurrentTrack(trackSelect, audio) })
   if (btnPrevTrack) btnPrevTrack.addEventListener('click', async () => { await audio.prevTrack(); selectCurrentTrack(trackSelect, audio) })
   if (btnAchievements) btnAchievements.addEventListener('click', () => { renderAchievementsList(achievements); openAchievements() })
+  if (sensRange) {
+    try { const saved = Number(localStorage.getItem('touchSens')); if (!Number.isNaN(saved)) sensRange.value = String(saved) } catch {}
+    sensRange.addEventListener('input', (e) => {
+      const v = Math.max(5, Math.min(30, Number(e.target.value) || 12))
+      try { localStorage.setItem('touchSens', String(v)) } catch {}
+      window.__touchSensitivity = v
+    })
+  }
+  if (onscreenToggle) {
+    const coarse = window.matchMedia && window.matchMedia('(pointer:coarse)').matches
+    try {
+      const saved = localStorage.getItem('dpad')
+      onscreenToggle.checked = saved ? saved === '1' : coarse
+    } catch {}
+    const dpad = document.getElementById('dpad')
+    const apply = () => { if (!dpad) return; dpad.classList.toggle('hidden', !onscreenToggle.checked) }
+    apply()
+    onscreenToggle.addEventListener('change', () => {
+      try { localStorage.setItem('dpad', onscreenToggle.checked ? '1' : '0') } catch {}
+      apply()
+    })
+    // Bind dpad buttons
+    if (dpad) {
+      const click = (id, dir) => {
+        const b = document.getElementById(id)
+        if (b) b.addEventListener('click', () => input.onMove && input.onMove(dir))
+      }
+      click('dpad-up', 'up'); click('dpad-down', 'down'); click('dpad-left', 'left'); click('dpad-right', 'right')
+    }
+  }
 
   // Achievements overlay
   const achOverlay = document.getElementById('ach-overlay')

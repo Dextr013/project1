@@ -126,6 +126,14 @@
               <input id="sfx-toggle" type="checkbox" checked />
             </div>
             <div class="form-row">
+              <label for="touch-sens" data-i18n="sensitivity">Touch sensitivity</label>
+              <input id="touch-sens" type="range" min="5" max="30" value="12" />
+            </div>
+            <div class="form-row">
+              <label for="onscreen-toggle" data-i18n="onscreen">On-screen controls</label>
+              <input id="onscreen-toggle" type="checkbox" />
+            </div>
+            <div class="form-row">
               <button id="btn-undo" class="btn" data-i18n="undo">Undo</button>
               <button id="btn-redo" class="btn" data-i18n="redo">Redo</button>
               <button id="btn-hint" class="btn" data-i18n="hint">Hint</button>
@@ -148,6 +156,13 @@
               <button id="btn-ach-close" class="btn" data-i18n="close">Close</button>
             </div>
           </div>
+        </div>
+
+        <div id="dpad" class="hidden" aria-hidden="true">
+          <button id="dpad-up" class="btn" aria-label="Up">▲</button>
+          <button id="dpad-left" class="btn" aria-label="Left">◀</button>
+          <button id="dpad-right" class="btn" aria-label="Right">▶</button>
+          <button id="dpad-down" class="btn" aria-label="Down">▼</button>
         </div>
       </div>
 

@@ -47,5 +47,7 @@
   "fast512": "512 in 30s!",
   "endurance5": "Endurance 5 minutes!",
   "tileSounds": "Tile sounds",
-  "background": "Background"
+  "background": "Background",
+  "sensitivity": "Touch sensitivity",
+  "onscreen": "On-screen controls"
 }

@@ -23,9 +23,22 @@ export class Input {
 
     let sx = 0, sy = 0, tracking = false
     let lastDx = 0, lastDy = 0
-    const isCoarse = window.matchMedia && window.matchMedia('(pointer:coarse)').matches
-    const threshold = isCoarse ? 10 : 14
-    const endThreshold = isCoarse ? 8 : 12
+
+    const computeThresholds = () => {
+      const isCoarse = window.matchMedia && window.matchMedia('(pointer:coarse)').matches
+      const base = Number(window.__touchSensitivity || localStorage.getItem('touchSens') || 12)
+      const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
+      const t = clamp(base, 5, 30)
+      const threshold = isCoarse ? Math.max(8, t) : Math.max(10, t - 2)
+      const endThreshold = Math.max(6, threshold - 2)
+      return { threshold, endThreshold }
+    }
+
+    let { threshold, endThreshold } = computeThresholds()
+
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'touchSens') { ({ threshold, endThreshold } = computeThresholds()) }
+    })
 
     target.addEventListener('touchstart', (e) => {
       const t = e.touches[0]
