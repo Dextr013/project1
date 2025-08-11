@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#000000" />
+    <title>Киберпанк 2048</title>
+    
+    <link rel="preload" as="style" href="styles.css" id="styles-preload">
+    <link rel="modulepreload" href="src/main.js">
+    <!-- Speed up potential Yandex SDK/connects -->
+    <link rel="preconnect" href="https://yandex.ru" crossorigin>
+    <link rel="preconnect" href="https://yandex.ru/games" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <!-- Preload fallback background only to reduce bandwidth; others load on demand -->
+    <link rel="preload" as="image" href="bg6.png">
+    <!-- Minimal critical CSS for early paint (preloader + base) -->
+    <style>
+      html,body{height:100%}
+      body{margin:0;background:#000;color:#c9f5ff;font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif}
+      .hidden{display:none}
+      .preloader{position:fixed;inset:0;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;background:#000}
+      .spinner{width:42px;height:42px;border-radius:50%;border:4px solid rgba(255,255,255,.12);border-top-color:#00e0ff;animation:spin .9s linear infinite}
+      @keyframes spin{to{transform:rotate(360deg)}}
+      /* Ensure visible by default to avoid NO_FCP if host injects hidden */
+      html,body{visibility:visible!important;opacity:1!important}
+    </style>
+    <script src="src/boot.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
+  </head>
+  <body style="visibility:visible!important;opacity:1!important;display:block!important">
+    <noscript>
+      <style> .preloader{display:none!important} .hidden{display:block!important} </style>
+      <div style="padding:16px;color:#fff;background:#000">This game requires JavaScript.</div>
+    </noscript>
+    <div id="preloader" class="preloader">
+      <div class="spinner"></div>
+      <div id="preloader-text">Loading…</div>
+        </div>
+
+    <div id="bg-layer" aria-hidden="true"><img id="bg-img" alt="" decoding="async" /></div>
+
+    <div id="app" class="hidden">
+      <div class="hud">
+        <div class="brand">
+          <span class="title" data-i18n="title">Киберпанк 2048</span>
+          <button id="btn-new" class="btn" data-i18n="newGame">New Game</button>
+        </div>
+        <div class="stats">
+          <div class="stat"><span data-i18n="score">Score</span><strong id="score">0</strong></div>
+          <div class="stat"><span data-i18n="best">Best</span><strong id="best">0</strong></div>
+          <div class="stat" id="timer-wrap" style="display:none"><span data-i18n="timeLeft">Time</span><strong id="time-left">2:00</strong></div>
+        </div>
+                 <div class="controls">
+           <label class="mode-wrap"><span data-i18n="mode">Mode</span>
+             <select id="mode-select" class="select">
+               <option value="classic" data-i18n="modeClassic">Classic</option>
+               <option value="timed" data-i18n="modeTimed">Timed</option>
+             </select>
+           </label>
+           <label class="mode-wrap"><span data-i18n="size">Size</span>
+             <select id="size-select" class="select">
+               <option value="4">4x4</option>
+               <option value="5">5x5</option>
+               <option value="6">6x6</option>
+             </select>
+           </label>
+           <button id="btn-undo" class="btn" data-i18n="undo">Undo</button>
+           <button id="btn-redo" class="btn" data-i18n="redo">Redo</button>
+           <button id="btn-hint" class="btn" data-i18n="hint">Hint</button>
+           <button id="btn-sound" class="btn toggle" aria-pressed="false" data-i18n="soundOn">Sound</button>
+           <select id="lang-select" class="select"></select>
+           <button id="btn-settings" class="btn" data-i18n="settings">Settings</button>
+           <button id="btn-auth" class="btn" data-i18n="signIn">Sign In</button>
+           <button id="btn-lb" class="btn" data-i18n="leaderboard">Leaderboard</button>
+         </div>
+      </div>
+
+      <div class="game-container" style="-webkit-user-select:none;-moz-user-select:none;user-select:none;touch-action:none">
+        <canvas id="game-canvas" width="480" height="640" aria-label="game"></canvas>
+        <div id="overlay" class="overlay hidden">
+          <div class="overlay-content">
+            <div id="overlay-title" class="overlay-title">Киберпанк 2048</div>
+            <div id="overlay-sub" class="overlay-sub">—</div>
+            <div class="overlay-actions">
+              <button id="btn-continue" class="btn primary" data-i18n="continue">Continue</button>
+              <button id="btn-restart" class="btn" data-i18n="restart">Restart</button>
+            </div>
+          </div>
+        </div>
+        <div id="lb-overlay" class="overlay hidden">
+          <div class="overlay-content">
+            <div class="overlay-title" data-i18n="leaderboard">Leaderboard</div>
+            <div id="lb-list" class="lb-list"></div>
+            <div class="overlay-actions">
+              <button id="btn-lb-close" class="btn" data-i18n="close">Close</button>
+            </div>
+          </div>
+        </div>
+        <div id="settings-overlay" class="overlay hidden">
+          <div class="overlay-content">
+            <div class="overlay-title" data-i18n="settings">Settings</div>
+            <div class="form-row">
+              <label for="volume-range" data-i18n="musicVolume">Music volume</label>
+              <input id="volume-range" type="range" min="0" max="100" value="60" />
+            </div>
+            <div class="form-row">
+              <label data-i18n="musicTrack">Music track</label>
+              <div class="track-controls">
+                <button id="btn-prev-track" class="btn" data-i18n="prevTrack">Prev</button>
+                <select id="track-select" class="select"></select>
+                <button id="btn-next-track" class="btn" data-i18n="nextTrack">Next</button>
+              </div>
+            </div>
+            <div class="form-row">
+              <button id="btn-achievements" class="btn" data-i18n="achievements">Achievements</button>
+            </div>
+            <div class="overlay-actions">
+              <button id="btn-settings-close" class="btn" data-i18n="close">Close</button>
+            </div>
+          </div>
+        </div>
+        <div id="ach-overlay" class="overlay hidden">
+          <div class="overlay-content">
+            <div class="overlay-title" data-i18n="achievements">Achievements</div>
+            <div id="ach-list" class="ach-list"></div>
+            <div class="overlay-actions">
+              <button id="btn-ach-close" class="btn" data-i18n="close">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="footer">
+        <span>© 2025</span>
+      </footer>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
