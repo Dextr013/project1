@@ -232,6 +232,7 @@ async function boot() {
   const btnPrevTrack = document.getElementById('btn-prev-track')
   const btnAchievements = document.getElementById('btn-achievements')
   const sfxToggle = document.getElementById('sfx-toggle')
+  const bgSelect = document.getElementById('bg-select')
   if (btnSettings) btnSettings.addEventListener('click', () => { settingsOverlay?.classList.remove('hidden') })
   if (btnSettingsClose) btnSettingsClose.addEventListener('click', () => { settingsOverlay?.classList.add('hidden') })
   if (volumeRange) {
@@ -251,6 +252,32 @@ async function boot() {
       const id = e.target.value
       await audio.play(id)
       ensureSoundToggleReflects(btnSound, audio)
+    })
+  }
+  if (bgSelect) {
+    const bgList = [
+      { id: 'background17.webp', label: 'Neon Grid A' },
+      { id: 'background18.webp', label: 'Neon Grid B' },
+      { id: 'background19.webp', label: 'Neon Grid C' },
+      { id: 'bg6.webp', label: 'Blue Glow' },
+      { id: 'bg13.webp', label: 'Cyber Sky' },
+    ]
+    bgSelect.innerHTML = ''
+    for (const bg of bgList) {
+      const opt = document.createElement('option')
+      opt.value = bg.id
+      opt.textContent = bg.label
+      bgSelect.appendChild(opt)
+    }
+    try {
+      const savedBg = localStorage.getItem('bg')
+      if (savedBg) bgSelect.value = savedBg
+    } catch {}
+    const img = document.getElementById('bg-img')
+    bgSelect.addEventListener('change', (e) => {
+      const val = e.target.value
+      if (img) img.src = val
+      try { localStorage.setItem('bg', val) } catch {}
     })
   }
   if (sfxToggle) {
@@ -400,7 +427,7 @@ async function boot() {
     if (bgLayer) {
       const q = new URLSearchParams(location.search)
       const customBg = q.get('bg')
-      const defaultBg = 'background18.webp'
+      const defaultBg = (localStorage.getItem('bg') || 'background18.webp')
       const fallbackList = ['background17.webp','background18.webp','background19.webp','bg6.webp','bg13.webp']
       const chosen = customBg ? decodeURIComponent(customBg) : defaultBg
       const img = document.getElementById('bg-img')
