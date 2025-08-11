@@ -40,7 +40,7 @@ function setUiTexts() {
   const pl = document.getElementById('preloader-text')
   if (pl) pl.textContent = t('loading')
   // Force game name everywhere
-  try { document.title = t('title') } catch {}
+  try { document.title = 'Киберпанк 2048' } catch {}
 }
 
 function tryShowInterstitial() {
