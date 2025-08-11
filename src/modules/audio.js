@@ -13,6 +13,32 @@ export class AudioManager {
       const me = localStorage.getItem('musicEnabled')
       if (me === '1') this.enabled = true
     } catch {}
+
+    try {
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) this._suspend()
+        else this._resume()
+      })
+      window.addEventListener('blur', () => this._suspend())
+      window.addEventListener('focus', () => this._resume())
+    } catch {}
+  }
+
+  async _ensureCtx() {
+    if (!this._actx) this._actx = new (window.AudioContext || window.webkitAudioContext)()
+    if (this._actx.state === 'suspended') {
+      try { await this._actx.resume() } catch {}
+    }
+  }
+
+  async _suspend() {
+    try { if (this._actx && this._actx.state === 'running') await this._actx.suspend() } catch {}
+    if (this.current) { try { this.current.pause() } catch {} }
+  }
+  async _resume() {
+    if (!this.enabled) return
+    await this._ensureCtx()
+    if (this.current) { try { await this.current.play() } catch {} }
   }
 
   setEnabled(on) {
@@ -35,18 +61,9 @@ export class AudioManager {
     try { localStorage.setItem('volume', String(Math.round(clamped * 100))) } catch {}
   }
 
-  getMusicTracks() {
-    return this.tracks.filter((t) => t.type === 'music')
-  }
-
-  getCurrentTrackId() {
-    return this.currentId
-  }
-
-  setCurrentId(id) {
-    this.currentId = id
-    try { localStorage.setItem('trackId', id) } catch {}
-  }
+  getMusicTracks() { return this.tracks.filter((t) => t.type === 'music') }
+  getCurrentTrackId() { return this.currentId }
+  setCurrentId(id) { this.currentId = id; try { localStorage.setItem('trackId', id) } catch {} }
 
   async ensureLoaded(track) {
     if (track.el) return track.el
@@ -62,10 +79,8 @@ export class AudioManager {
     const mus = this.getMusicTracks()
     if (mus.length === 0) return
     const pick = mus[Math.floor(Math.random() * mus.length)]
-    if (!this.enabled) {
-      this.setCurrentId(pick.id)
-      return
-    }
+    this.setCurrentId(pick.id)
+    if (!this.enabled) return
     await this.play(pick.id)
   }
 
@@ -81,9 +96,8 @@ export class AudioManager {
     this.stop()
     this.current = track.el
     this.current.volume = this.volume
-    if (this.enabled) {
-      try { await this.current.play() } catch {}
-    }
+    try { await this._ensureCtx() } catch {}
+    try { await this.current.play() } catch {}
     try { localStorage.setItem('trackId', id) } catch {}
   }
 
@@ -105,8 +119,8 @@ export class AudioManager {
 
   stop() {
     if (this.current) {
-      this.current.pause()
-      this.current.currentTime = 0
+      try { this.current.pause() } catch {}
+      try { this.current.currentTime = 0 } catch {}
       this.current = null
     }
   }

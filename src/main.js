@@ -1,4 +1,4 @@
-import { loadI18n, setLanguage, populateLanguageSelect, t } from './modules/i18n.js'
+import { loadI18n, setLanguage, populateLanguageSelect, t, autoDetectLanguage } from './modules/i18n.js'
 import { AudioManager } from './modules/audio.js'
 import { Game } from './modules/game.js'
 import { Renderer } from './modules/renderer.js'
@@ -8,10 +8,11 @@ import { AdConfig } from './config.js'
 import { Achievements } from './modules/achievements.js'
 
 // Prevent page scrolling globally
-try {
-  window.addEventListener('wheel', (e) => { e.preventDefault() }, { passive: false })
-  window.addEventListener('touchmove', (e) => { e.preventDefault() }, { passive: false })
-} catch {}
+  try {
+    window.addEventListener('wheel', (e) => { e.preventDefault() }, { passive: false })
+    window.addEventListener('touchmove', (e) => { e.preventDefault() }, { passive: false })
+    window.addEventListener('contextmenu', (e) => { e.preventDefault() })
+  } catch {}
 
 const canvas = document.getElementById('game-canvas')
 const ctx = canvas.getContext('2d', { alpha: true })
@@ -74,7 +75,7 @@ async function boot() {
   try {
     await withTimeout(loadI18n(['en', 'ru']), 1500)
   } catch {}
-  const prefer = Platform.getLocale?.() || navigator.language || 'en'
+  const prefer = Platform.getLocale?.() || autoDetectLanguage()
   setLanguage(prefer.startsWith('ru') ? 'ru' : 'en')
   const langSelect = document.getElementById('lang-select')
   if (langSelect) populateLanguageSelect(langSelect)
@@ -498,8 +499,6 @@ async function boot() {
       else if (local && game.setState(local)) { /* local */ }
       else { startNewRun(game, renderer) }
       updateHud(game)
-      // Autostart music if previously enabled and user interacted
-      try { if (localStorage.getItem('musicEnabled') === '1') { /* require a user event first */ } } catch {}
       achievements.check(game)
     } catch (e) {
       console.warn('Deferred platform init failed', e)

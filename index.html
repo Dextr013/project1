@@ -8,6 +8,8 @@
     <meta name="theme-color" content="#000000" />
     <title>Киберпанк 2048</title>
     
+    <script src="https://yandex.ru/games/sdk/v2" defer></script>
+    
     <link rel="preload" as="style" href="styles.css" id="styles-preload">
     <link rel="modulepreload" href="src/main.js">
     <!-- Speed up potential Yandex SDK/connects -->
@@ -61,7 +63,7 @@
       <div class="game-container" style="-webkit-user-select:none;-moz-user-select:none;user-select:none;touch-action:none">
         <canvas id="game-canvas" width="480" height="640" aria-label="game"></canvas>
         <div id="overlay" class="overlay hidden">
-          <div class="overlay-content">
+          <div class="overlay-content" style="max-height:80vh;overflow:auto">
             <div id="overlay-title" class="overlay-title">Киберпанк 2048</div>
             <div id="overlay-sub" class="overlay-sub">—</div>
             <div class="overlay-actions">
@@ -71,7 +73,7 @@
           </div>
         </div>
         <div id="lb-overlay" class="overlay hidden">
-          <div class="overlay-content">
+          <div class="overlay-content" style="max-height:80vh;overflow:auto">
             <div class="overlay-title" data-i18n="leaderboard">Leaderboard</div>
             <div id="lb-list" class="lb-list"></div>
             <div class="overlay-actions">
@@ -80,7 +82,7 @@
           </div>
         </div>
         <div id="settings-overlay" class="overlay hidden">
-          <div class="overlay-content">
+          <div class="overlay-content" style="max-height:80vh;overflow:auto">
             <div class="overlay-title" data-i18n="settings">Settings</div>
             <div class="form-row">
               <label data-i18n="mode">Mode</label>
@@ -148,7 +150,7 @@
           </div>
         </div>
         <div id="ach-overlay" class="overlay hidden">
-          <div class="overlay-content">
+          <div class="overlay-content" style="max-height:80vh;overflow:auto">
             <div class="overlay-title" data-i18n="achievements">Achievements</div>
             <div id="ach-list" class="ach-list"></div>
             <div class="overlay-actions">

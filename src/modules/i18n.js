@@ -33,6 +33,15 @@ export function setLanguage(locale) {
   try { localStorage.setItem('lang', locale) } catch {}
 }
 
+export function autoDetectLanguage() {
+  try {
+    const ylang = window.YaGames?.i18n?.lang || window.ysdk?.i18n?.lang
+    if (ylang) return ylang.startsWith('ru') ? 'ru' : 'en'
+  } catch {}
+  const nav = navigator.language || 'en'
+  return nav.startsWith('ru') ? 'ru' : 'en'
+}
+
 export function t(key, params) {
   const dict = dictionaries[current] || {}
   const raw = dict[key] || key
