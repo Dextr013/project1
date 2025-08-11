@@ -131,7 +131,8 @@ async function boot() {
   if (btnNew) btnNew.addEventListener('click', async () => {
     if (AdConfig.interstitialOnNew) tryShowInterstitial()
     startNewRun(game, renderer)
-    state.audio.playRandomBgm()
+    const shouldMusic = localStorage.getItem('musicEnabled') === '1'
+    if (shouldMusic) { audio.setEnabled(true); await audio.playRandomBgm() }
     hideOverlay()
     saveState(game)
     tick(performance.now())
@@ -163,11 +164,11 @@ async function boot() {
   })
 
   const btnSound = document.getElementById('btn-sound')
-  if (btnSound) btnSound.addEventListener('click', () => {
+  if (btnSound) btnSound.addEventListener('click', async () => {
     const next = !(btnSound.getAttribute('aria-pressed') === 'true')
     btnSound.setAttribute('aria-pressed', String(next))
     audio.setEnabled(next)
-    if (next) audio.playRandomBgm()
+    if (next) { await audio.playRandomBgm() }
   })
 
   const langSel = document.getElementById('lang-select')
@@ -482,7 +483,8 @@ async function boot() {
       else if (local && game.setState(local)) { /* local */ }
       else { startNewRun(game, renderer) }
       updateHud(game)
-      audio.setEnabled(false)
+      // Autostart music if previously enabled and user interacted
+      try { if (localStorage.getItem('musicEnabled') === '1') { /* require a user event first */ } } catch {}
       achievements.check(game)
     } catch (e) {
       console.warn('Deferred platform init failed', e)

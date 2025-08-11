@@ -10,11 +10,14 @@ export class AudioManager {
     try {
       const s = localStorage.getItem('sfx')
       if (s === '0') this.sfxEnabled = false
+      const me = localStorage.getItem('musicEnabled')
+      if (me === '1') this.enabled = true
     } catch {}
   }
 
   setEnabled(on) {
     this.enabled = on
+    try { localStorage.setItem('musicEnabled', on ? '1' : '0') } catch {}
     if (!on) this.stop()
     else if (this.currentId) this.play(this.currentId)
   }
