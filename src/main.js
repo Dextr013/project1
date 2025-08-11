@@ -236,6 +236,7 @@ async function boot() {
   const bgSelect = document.getElementById('bg-select')
   const sensRange = document.getElementById('touch-sens')
   const onscreenToggle = document.getElementById('onscreen-toggle')
+  const musicToggle = document.getElementById('music-toggle')
   if (btnSettings) btnSettings.addEventListener('click', () => { settingsOverlay?.classList.remove('hidden') })
   if (btnSettingsClose) btnSettingsClose.addEventListener('click', () => { settingsOverlay?.classList.add('hidden') })
   if (volumeRange) {
@@ -251,10 +252,24 @@ async function boot() {
   }
   if (trackSelect) {
     populateTrackSelect(audio)
+    try { const cur = audio.getCurrentTrackId(); if (cur) selectCurrentTrack(trackSelect, audio) } catch {}
     trackSelect.addEventListener('change', async (e) => {
       const id = e.target.value
+      audio.setEnabled(true)
       await audio.play(id)
       ensureSoundToggleReflects(btnSound, audio)
+    })
+  }
+  if (musicToggle) {
+    try { musicToggle.checked = localStorage.getItem('musicEnabled') === '1' } catch {}
+    musicToggle.addEventListener('change', async () => {
+      audio.setEnabled(musicToggle.checked)
+      if (musicToggle.checked) {
+        const id = audio.getCurrentTrackId()
+        if (id) await audio.play(id); else await audio.playRandomBgm()
+      } else {
+        audio.stop()
+      }
     })
   }
   if (bgSelect) {
@@ -279,7 +294,7 @@ async function boot() {
     const img = document.getElementById('bg-img')
     bgSelect.addEventListener('change', (e) => {
       const val = e.target.value
-      if (img) img.src = val
+      if (img) { img.src = val; img.onerror = null }
       try { localStorage.setItem('bg', val) } catch {}
     })
   }
