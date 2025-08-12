@@ -121,6 +121,8 @@ async function boot() {
   const game = new Game()
   const renderer = new Renderer(canvas)
   const input = new Input(canvas)
+  // Gameplay analytics
+  Platform.gameplayStart()
   input.onUndo = () => doUndo()
   input.onRedo = () => doRedo()
   input.onHint = () => doHint()
@@ -149,7 +151,9 @@ async function boot() {
   const btnRestart = document.getElementById('btn-restart')
   if (btnRestart) btnRestart.addEventListener('click', async () => {
     if (AdConfig.interstitialOnRestart) tryShowInterstitial()
+    Platform.gameplayStop()
     startNewRun(game, renderer)
+    Platform.gameplayStart()
     hideOverlay()
     saveState(game)
     tick(performance.now())

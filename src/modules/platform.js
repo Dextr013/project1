@@ -3,6 +3,7 @@ export const Platform = {
   ysdk: null,
   player: null,
   config: { leaderboardId: 'score' },
+  flags: {},
 
   async init() {
     const q = new URLSearchParams(location.search)
@@ -16,10 +17,16 @@ export const Platform = {
 
     try {
       if (this.env === 'yandex') {
-        // Even if YaGames not present yet, attempt to load it
+        // Ensure SDK is present if not already
         await this.ensureYandexSdk()
         this.ysdk = await window.YaGames.init()
         try { this.player = await this.ysdk.getPlayer({ scopes: true }) } catch {}
+        // Remote Config
+        try {
+          const defaultFlags = { reduceParticles: false, dpadDefaultMobile: true }
+          const clientFeatures = { isMobile: this.getDevice().isMobile }
+          this.flags = await this.ysdk.getFlags({ defaultFlags, clientFeatures })
+        } catch (e) { this.flags = { reduceParticles: false, dpadDefaultMobile: true } }
       } else {
         // If not explicitly yandex but SDK is available, set it up
         if (window.YaGames?.init) {
@@ -28,6 +35,11 @@ export const Platform = {
             this.ysdk = await window.YaGames.init()
             this.env = 'yandex'
             try { this.player = await this.ysdk.getPlayer({ scopes: true }) } catch {}
+            try {
+              const defaultFlags = { reduceParticles: false, dpadDefaultMobile: true }
+              const clientFeatures = { isMobile: this.getDevice().isMobile }
+              this.flags = await this.ysdk.getFlags({ defaultFlags, clientFeatures })
+            } catch (e) { this.flags = { reduceParticles: false, dpadDefaultMobile: true } }
           } catch {}
         }
       }
@@ -44,6 +56,31 @@ export const Platform = {
 
   getLocale() {
     try { return this.ysdk?.i18n?.getLocale?.() || navigator.language || 'en' } catch { return navigator.language || 'en' }
+  },
+
+  getDevice() {
+    try {
+      const di = this.ysdk?.deviceInfo
+      if (di) {
+        return {
+          isMobile: !!di.isMobile(),
+          isDesktop: !!di.isDesktop(),
+          isTablet: !!di.isTablet(),
+          isTV: !!di.isTV?.(),
+        }
+      }
+    } catch {}
+    // Fallback heuristics
+    const ua = navigator.userAgent.toLowerCase()
+    const isMobile = /android|iphone|ipad|ipod/.test(ua)
+    return { isMobile, isDesktop: !isMobile, isTablet: /ipad|tablet/.test(ua), isTV: false }
+  },
+
+  gameplayStart() {
+    try { this.ysdk?.features?.GameplayAPI?.start?.() } catch {}
+  },
+  gameplayStop() {
+    try { this.ysdk?.features?.GameplayAPI?.stop?.() } catch {}
   },
 
   async auth() {
@@ -131,7 +168,9 @@ export const Platform = {
   async showInterstitial() {
     try {
       if (this.env === 'yandex' && this.ysdk?.adv?.showFullscreenAdv) {
+        this.gameplayStop()
         await this.ysdk.adv.showFullscreenAdv({ callbacks: {} })
+        this.gameplayStart()
         return true
       }
     } catch (e) { console.warn('Interstitial error', e) }
@@ -141,7 +180,8 @@ export const Platform = {
   async showRewarded() {
     try {
       if (this.env === 'yandex' && this.ysdk?.adv?.showRewardedVideo) {
-        return await new Promise((resolve) => {
+        this.gameplayStop()
+        const res = await new Promise((resolve) => {
           this.ysdk.adv.showRewardedVideo({
             callbacks: {
               onRewarded: () => resolve(true),
@@ -150,6 +190,8 @@ export const Platform = {
             },
           })
         })
+        this.gameplayStart()
+        return res
       }
     } catch (e) { console.warn('Rewarded error', e) }
     return false
