@@ -30,6 +30,18 @@ function loadImage(src) {
   })
 }
 
+async function prewarmTiles(cache) {
+  try {
+    const list = [2, 4, 8, 16, 32, 64, 128]
+    for (const v of list) {
+      const src = tileSrcByValue.get(v)
+      if (src && !cache.has(src)) {
+        loadImage(src).then((img) => cache.set(src, img)).catch(() => {})
+      }
+    }
+  } catch {}
+}
+
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas
@@ -42,6 +54,9 @@ export class Renderer {
     this.particles = [] // {x,y,vx,vy,life,color,sz}
     this._queuedMerge = [] // [[r,c],...]
     this._queuedSpawn = [] // [[r,c],...]
+
+    // Defer prewarm to avoid blocking paint
+    requestIdleCallback?.(() => prewarmTiles(this.cache)) || setTimeout(() => prewarmTiles(this.cache), 300)
   }
   setDpr(dpr) { this.dpr = dpr }
 
@@ -189,10 +204,12 @@ export class Renderer {
   queueSpawnEffect(r, c) { this._queuedSpawn.push([r, c]) }
 
   _emitParticlesForCells(cells, layout, color) {
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const burst = reduce ? 4 : 10
     for (const [r, c] of cells) {
       const x = layout.startX + c * (layout.cellSize + layout.cellGap) + layout.cellSize / 2
       const y = layout.startY + r * (layout.cellSize + layout.cellGap) + layout.cellSize / 2
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < burst; i++) {
         const a = Math.random() * Math.PI * 2
         const sp = (Math.random() * 60 + 40) * this.dpr
         this.particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 300, color, sz: 2 * this.dpr })
@@ -203,6 +220,10 @@ export class Renderer {
   update(dt) {
     // particles integration
     const p = this.particles
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const damping = reduce ? 0.92 : 0.98
+    const maxParticles = reduce ? 100 : 300
+    if (p.length > maxParticles) p.splice(0, p.length - maxParticles)
     for (let i = p.length - 1; i >= 0; i--) {
       const it = p[i]
       it.life -= dt
@@ -211,8 +232,8 @@ export class Renderer {
       it.x += it.vx * t
       it.y += it.vy * t
       // friction
-      it.vx *= 0.98
-      it.vy *= 0.98
+      it.vx *= damping
+      it.vy *= damping
     }
   }
 
@@ -234,13 +255,23 @@ export class Renderer {
     // Draw tiles
     this.drawTiles(game.grid, layout)
 
-    // Draw particles on top
-    for (const it of this.particles) {
-      ctx.fillStyle = it.color
-      ctx.globalAlpha = Math.max(0, Math.min(1, it.life / 300))
-      ctx.fillRect(it.x - it.sz / 2, it.y - it.sz / 2, it.sz, it.sz)
+    // Draw particles on top (batched by color to reduce state changes)
+    if (this.particles.length) {
+      const groups = new Map()
+      for (const it of this.particles) {
+        const key = `${it.color}-${Math.round(Math.max(0, Math.min(1, it.life / 300))*100)}`
+        if (!groups.has(key)) groups.set(key, { color: it.color, alpha: Math.max(0, Math.min(1, it.life / 300)), items: [] })
+        groups.get(key).items.push(it)
+      }
+      for (const g of groups.values()) {
+        ctx.fillStyle = g.color
+        ctx.globalAlpha = g.alpha
+        for (const it of g.items) {
+          ctx.fillRect(it.x - it.sz / 2, it.y - it.sz / 2, it.sz, it.sz)
+        }
+      }
+      ctx.globalAlpha = 1
     }
-    ctx.globalAlpha = 1
   }
 
   bumpTiles(positions) {
@@ -250,10 +281,11 @@ export class Renderer {
       this.bump.set(key, 1.0)
       if (window.gsap) {
         window.gsap.killTweensOf({})
-        window.gsap.to(this, { duration: 0.12, ease: 'power2.out', onUpdate: () => {
+        const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+       window.gsap.to(this, { duration: reduce ? 0.08 : 0.12, ease: 'power2.out', onUpdate: () => {
           this.bump.set(key, 1.15)
         }})
-        window.gsap.to(this, { duration: 0.18, delay: 0.12, ease: 'back.out(2)', onUpdate: () => {
+        window.gsap.to(this, { duration: reduce ? 0.12 : 0.18, delay: reduce ? 0.08 : 0.12, ease: 'back.out(2)', onUpdate: () => {
           this.bump.set(key, 1.0)
         }, onComplete: () => { this.bump.delete(key) }})
       } else {
@@ -267,12 +299,13 @@ export class Renderer {
   pulseSpawn(r, c) {
     const key = `${r},${c}`
     this.spawnPulse.set(key, 0.8)
-    if (window.gsap) {
-      window.gsap.to(this, { duration: 0.25, ease: 'back.out(3)', onUpdate: () => {
-        const cur = this.spawnPulse.get(key) || 1
-        this.spawnPulse.set(key, Math.min(1.0, cur + 0.05))
-      }, onComplete: () => { this.spawnPulse.delete(key) }})
-    } else {
+          const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (window.gsap) {
+        window.gsap.to(this, { duration: reduce ? 0.15 : 0.25, ease: 'back.out(3)', onUpdate: () => {
+          const cur = this.spawnPulse.get(key) || 1
+          this.spawnPulse.set(key, Math.min(1.0, cur + (reduce ? 0.08 : 0.05)))
+        }, onComplete: () => { this.spawnPulse.delete(key) }})
+      } else {
       setTimeout(() => this.spawnPulse.set(key, 1), 180)
       setTimeout(() => this.spawnPulse.delete(key), 260)
     }
@@ -282,8 +315,9 @@ export class Renderer {
     if (!moves || !moves.length) return Promise.resolve()
     this.slide = moves.map((m) => ({ r: m.fromR, c: m.fromC, tr: m.toR, tc: m.toC, value: m.value, p: 0 }))
     return new Promise((resolve) => {
+      const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
       if (window.gsap) {
-        window.gsap.to(this.slide, { duration: 0.18, p: 1, ease: 'power2.out', onComplete: () => { this.slide = []; resolve() } })
+        window.gsap.to(this.slide, { duration: reduce ? 0.1 : 0.18, p: 1, ease: 'power2.out', onComplete: () => { this.slide = []; resolve() } })
       } else {
         const start = performance.now()
         const dur = 180

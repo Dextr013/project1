@@ -40,7 +40,7 @@ function setUiTexts() {
   const pl = document.getElementById('preloader-text')
   if (pl) pl.textContent = t('loading')
   // Force game name everywhere
-  try { document.title = t('title') } catch {}
+  try { document.title = 'Киберпанк 2048' } catch {}
 }
 
 function tryShowInterstitial() {
@@ -79,6 +79,15 @@ async function boot() {
   const langSelect = document.getElementById('lang-select')
   if (langSelect) populateLanguageSelect(langSelect)
   setUiTexts()
+  // Restore saved language (overrides auto-detect)
+  try {
+    const savedLang = localStorage.getItem('lang')
+    if (savedLang === 'en' || savedLang === 'ru') {
+      setLanguage(savedLang)
+      if (langSelect) populateLanguageSelect(langSelect)
+      setUiTexts()
+    }
+  } catch {}
 
   // If Yandex SDK is already present (pre-injected by container), signal ready ASAP
   try {
@@ -122,7 +131,8 @@ async function boot() {
   if (btnNew) btnNew.addEventListener('click', async () => {
     if (AdConfig.interstitialOnNew) tryShowInterstitial()
     startNewRun(game, renderer)
-    state.audio.playRandomBgm()
+    const shouldMusic = localStorage.getItem('musicEnabled') === '1'
+    if (shouldMusic) { audio.setEnabled(true); await audio.playRandomBgm() }
     hideOverlay()
     saveState(game)
     tick(performance.now())
@@ -154,11 +164,11 @@ async function boot() {
   })
 
   const btnSound = document.getElementById('btn-sound')
-  if (btnSound) btnSound.addEventListener('click', () => {
+  if (btnSound) btnSound.addEventListener('click', async () => {
     const next = !(btnSound.getAttribute('aria-pressed') === 'true')
     btnSound.setAttribute('aria-pressed', String(next))
     audio.setEnabled(next)
-    if (next) audio.playRandomBgm()
+    if (next) { await audio.playRandomBgm() }
   })
 
   const langSel = document.getElementById('lang-select')
@@ -222,6 +232,11 @@ async function boot() {
   const btnNextTrack = document.getElementById('btn-next-track')
   const btnPrevTrack = document.getElementById('btn-prev-track')
   const btnAchievements = document.getElementById('btn-achievements')
+  const sfxToggle = document.getElementById('sfx-toggle')
+  const bgSelect = document.getElementById('bg-select')
+  const sensRange = document.getElementById('touch-sens')
+  const onscreenToggle = document.getElementById('onscreen-toggle')
+  const musicToggle = document.getElementById('music-toggle')
   if (btnSettings) btnSettings.addEventListener('click', () => { settingsOverlay?.classList.remove('hidden') })
   if (btnSettingsClose) btnSettingsClose.addEventListener('click', () => { settingsOverlay?.classList.add('hidden') })
   if (volumeRange) {
@@ -237,15 +252,94 @@ async function boot() {
   }
   if (trackSelect) {
     populateTrackSelect(audio)
+    try { const cur = audio.getCurrentTrackId(); if (cur) selectCurrentTrack(trackSelect, audio) } catch {}
     trackSelect.addEventListener('change', async (e) => {
       const id = e.target.value
+      audio.setEnabled(true)
       await audio.play(id)
       ensureSoundToggleReflects(btnSound, audio)
+    })
+  }
+  if (musicToggle) {
+    try { musicToggle.checked = localStorage.getItem('musicEnabled') === '1' } catch {}
+    musicToggle.addEventListener('change', async () => {
+      audio.setEnabled(musicToggle.checked)
+      if (musicToggle.checked) {
+        const id = audio.getCurrentTrackId()
+        if (id) await audio.play(id); else await audio.playRandomBgm()
+      } else {
+        audio.stop()
+      }
+    })
+  }
+  if (bgSelect) {
+    const bgList = [
+      { id: 'background17.webp', label: 'Neon Grid A' },
+      { id: 'background18.webp', label: 'Neon Grid B' },
+      { id: 'background19.webp', label: 'Neon Grid C' },
+      { id: 'bg6.webp', label: 'Blue Glow' },
+      { id: 'bg13.webp', label: 'Cyber Sky' },
+    ]
+    bgSelect.innerHTML = ''
+    for (const bg of bgList) {
+      const opt = document.createElement('option')
+      opt.value = bg.id
+      opt.textContent = bg.label
+      bgSelect.appendChild(opt)
+    }
+    try {
+      const savedBg = localStorage.getItem('bg')
+      if (savedBg) bgSelect.value = savedBg
+    } catch {}
+    const img = document.getElementById('bg-img')
+    bgSelect.addEventListener('change', (e) => {
+      const val = e.target.value
+      if (img) { img.src = val; img.onerror = null }
+      try { localStorage.setItem('bg', val) } catch {}
+    })
+  }
+  if (sfxToggle) {
+    try {
+      const s = localStorage.getItem('sfx')
+      sfxToggle.checked = s !== '0'
+    } catch {}
+    sfxToggle.addEventListener('change', (e) => {
+      audio.setSfxEnabled(e.target.checked)
     })
   }
   if (btnNextTrack) btnNextTrack.addEventListener('click', async () => { await audio.nextTrack(); selectCurrentTrack(trackSelect, audio) })
   if (btnPrevTrack) btnPrevTrack.addEventListener('click', async () => { await audio.prevTrack(); selectCurrentTrack(trackSelect, audio) })
   if (btnAchievements) btnAchievements.addEventListener('click', () => { renderAchievementsList(achievements); openAchievements() })
+  if (sensRange) {
+    try { const saved = Number(localStorage.getItem('touchSens')); if (!Number.isNaN(saved)) sensRange.value = String(saved) } catch {}
+    sensRange.addEventListener('input', (e) => {
+      const v = Math.max(5, Math.min(30, Number(e.target.value) || 12))
+      try { localStorage.setItem('touchSens', String(v)) } catch {}
+      window.__touchSensitivity = v
+    })
+  }
+  if (onscreenToggle) {
+    const coarse = window.matchMedia && window.matchMedia('(pointer:coarse)').matches
+    try {
+      const saved = localStorage.getItem('dpad')
+      onscreenToggle.checked = saved ? saved === '1' : coarse
+    } catch {}
+    const dpad = document.getElementById('dpad')
+    const apply = () => { if (!dpad) return; dpad.classList.toggle('hidden', !onscreenToggle.checked) }
+    apply()
+    onscreenToggle.addEventListener('change', () => {
+      try { localStorage.setItem('dpad', onscreenToggle.checked ? '1' : '0') } catch {}
+      apply()
+    })
+    // Bind dpad buttons
+    if (dpad) {
+      const click = (id, dir) => {
+        const b = document.getElementById(id)
+        if (b) b.addEventListener('click', () => input.onMove && input.onMove(dir))
+      }
+      click('dpad-up', 'up'); click('dpad-down', 'down'); click('dpad-left', 'left'); click('dpad-right', 'right')
+    }
+  }
 
   // Achievements overlay
   const achOverlay = document.getElementById('ach-overlay')
@@ -332,6 +426,23 @@ async function boot() {
     const dpr = Math.min(2, window.devicePixelRatio || 1)
     const vw = Math.max(320, Math.min(window.innerWidth, 1920))
     const vh = Math.max(320, Math.min(window.innerHeight, 1920))
+    // Parallax background based on pointer/tilt with clamping and reduced motion
+    try {
+      const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (!reduce) {
+        const img = document.getElementById('bg-img')
+        if (img) {
+          const rect = container?.getBoundingClientRect?.() || { width: vw, height: vh, left: 0, top: 0 }
+          const cx = rect.left + rect.width / 2
+          const cy = rect.top + rect.height / 2
+          const dx = (window.innerWidth / 2 - cx) / window.innerWidth
+          const dy = (window.innerHeight / 2 - cy) / window.innerHeight
+          const maxShift = 12
+          img.style.transform = `translate(${dx * maxShift}px, ${dy * maxShift}px) scale(1.03)`
+        }
+      }
+    } catch {}
+
 
     // Prefer container bounds; container keeps square via CSS aspect-ratio
     let cw = vw, ch = vh
@@ -364,8 +475,8 @@ async function boot() {
     if (bgLayer) {
       const q = new URLSearchParams(location.search)
       const customBg = q.get('bg')
-      const defaultBg = 'https://avatars.mds.yandex.net/get-games/1892995/2a00000198578acfc08bd4a514259834ed86//orig'
-      const fallbackList = ['background17.webp','background18.webp','background19.webp','bg6.png']
+      const defaultBg = (localStorage.getItem('bg') || 'background18.webp')
+      const fallbackList = ['background17.webp','background18.webp','background19.webp','bg6.webp','bg13.webp']
       const chosen = customBg ? decodeURIComponent(customBg) : defaultBg
       const img = document.getElementById('bg-img')
       if (img) {
@@ -387,7 +498,8 @@ async function boot() {
       else if (local && game.setState(local)) { /* local */ }
       else { startNewRun(game, renderer) }
       updateHud(game)
-      audio.setEnabled(false)
+      // Autostart music if previously enabled and user interacted
+      try { if (localStorage.getItem('musicEnabled') === '1') { /* require a user event first */ } } catch {}
       achievements.check(game)
     } catch (e) {
       console.warn('Deferred platform init failed', e)

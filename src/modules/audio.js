@@ -1,17 +1,30 @@
 export class AudioManager {
   constructor(tracks) {
     this.enabled = false
+    this.sfxEnabled = true
     this.tracks = (tracks || []).map((t) => ({ ...t, el: null }))
     this.current = null
     this.currentId = null
     this.volume = 0.6
     this._actx = null
+    try {
+      const s = localStorage.getItem('sfx')
+      if (s === '0') this.sfxEnabled = false
+      const me = localStorage.getItem('musicEnabled')
+      if (me === '1') this.enabled = true
+    } catch {}
   }
 
   setEnabled(on) {
     this.enabled = on
+    try { localStorage.setItem('musicEnabled', on ? '1' : '0') } catch {}
     if (!on) this.stop()
     else if (this.currentId) this.play(this.currentId)
+  }
+
+  setSfxEnabled(on) {
+    this.sfxEnabled = !!on
+    try { localStorage.setItem('sfx', this.sfxEnabled ? '1' : '0') } catch {}
   }
 
   setVolume(v) {
@@ -99,6 +112,7 @@ export class AudioManager {
   }
 
   playSfx(type) {
+    if (!this.sfxEnabled) return
     try {
       if (!this._actx) this._actx = new (window.AudioContext || window.webkitAudioContext)()
       const ctx = this._actx

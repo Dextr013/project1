@@ -22,24 +22,56 @@ export class Input {
     }, { passive: false })
 
     let sx = 0, sy = 0, tracking = false
-    const threshold = 16
-    let swipeDelayTimer = null
+    let lastDx = 0, lastDy = 0
+
+    const computeThresholds = () => {
+      const isCoarse = window.matchMedia && window.matchMedia('(pointer:coarse)').matches
+      const base = Number(window.__touchSensitivity || localStorage.getItem('touchSens') || 12)
+      const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
+      const t = clamp(base, 5, 30)
+      const threshold = isCoarse ? Math.max(8, t) : Math.max(10, t - 2)
+      const endThreshold = Math.max(6, threshold - 2)
+      return { threshold, endThreshold }
+    }
+
+    let { threshold, endThreshold } = computeThresholds()
+
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'touchSens') { ({ threshold, endThreshold } = computeThresholds()) }
+    })
+
     target.addEventListener('touchstart', (e) => {
       const t = e.touches[0]
       sx = t.clientX; sy = t.clientY; tracking = true
+      lastDx = 0; lastDy = 0
     }, { passive: true })
+
     target.addEventListener('touchmove', (e) => {
       if (!tracking) return
       const t = e.touches[0]
       const dx = t.clientX - sx
       const dy = t.clientY - sy
+      lastDx = dx; lastDy = dy
       if (Math.hypot(dx, dy) > threshold) {
         const dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up')
         tracking = false
-        clearTimeout(swipeDelayTimer)
-        swipeDelayTimer = setTimeout(() => { this.onMove && this.onMove(dir) }, 70)
+        this.onMove && this.onMove(dir)
       }
     }, { passive: true })
-    target.addEventListener('touchend', () => { tracking = false; clearTimeout(swipeDelayTimer) }, { passive: true })
+
+    const finish = () => { tracking = false; lastDx = 0; lastDy = 0 }
+
+    target.addEventListener('touchend', () => {
+      if (tracking) {
+        const dx = lastDx, dy = lastDy
+        if (Math.hypot(dx, dy) > endThreshold) {
+          const dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up')
+          this.onMove && this.onMove(dir)
+        }
+      }
+      finish()
+    }, { passive: true })
+
+    target.addEventListener('touchcancel', () => { finish() }, { passive: true })
   }
 }
